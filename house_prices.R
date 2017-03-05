@@ -58,7 +58,7 @@ res = complete(mice(imputed_dataframe_train_and_test))
 x_train = res[1:rows_in_train,]
 x_test = res[(rows_in_train + 1):nrow(res),]
 
-# casting all object type to numeric types
+# casting all object types to numeric type
 x_train[] <- lapply(x_train, as.numeric)
 x_test[] <- lapply(x_test, as.numeric)
 
@@ -67,7 +67,6 @@ dtrain = xgb.DMatrix(as.matrix(x_train), label=y_train)
 dtest = xgb.DMatrix(as.matrix(x_test))
 
 # Params
-seed = 0
 xgb_params = list(
   seed = 0,
   colsample_bytree = 0.8,
@@ -84,7 +83,7 @@ xgb_params = list(
   eval_metric = 'rmse'
 )
 
-res = xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=10, seed=seed, stratified=F, early_stopping_rounds=100)
+res = xgb.cv(xgb_params, dtrain, nrounds=100, nfold=10, stratified=F, early_stopping_rounds=100)
 
 best_nrounds = res$best_ntreelimit
 
