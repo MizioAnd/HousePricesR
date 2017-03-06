@@ -19,7 +19,10 @@ HousePrices <- setClass(
                         df_test = "data.frame",
                         # df_train_test_merged = "numeric"
                         numerical_feature_names = "character",
-                        non_numerical_feature_names = "character"
+                        non_numerical_feature_names = "character",
+                        feature_names_num = "character",
+                        is_one_hot_encoder = "logical"
+                        
                         ),
               
               # Set default values
@@ -30,7 +33,9 @@ HousePrices <- setClass(
                     # df_test = read.csv('/home/mizio/Documents/Kaggle/HousePrices/test.csv', stringsAsFactors = T)
                     # y_train = df$SalePrice
                     numerical_feature_names = c(),
-                    non_numerical_feature_names = c()
+                    non_numerical_feature_names = c(),
+                    feature_names_num = c(),
+                    is_one_hot_encoder = F
                     
                     # Merge training and test data together
                     # df_train_test_merged = merge_train_and_test_dataframe(df, df_test)
@@ -164,6 +169,23 @@ setMethod(f="extract_non_numerical_features",
                                           }
                                           )
 
+setGeneric(name="encode_labels_in_numeric_format",
+           def=function(theObject, df, feature)
+           {
+                      standardGeneric("encode_labels_in_numeric_format")
+           }
+           )
+setMethod(f="encode_labels_in_numeric_format",
+          signature="HousePrices",
+          definition=function(theObject, df, feature)
+          {
+            # Todo:
+            # Encode categorical features as integers
+            feature_name_num <- c(feature, "Num")
+            levels <- sort(unique(df[[feature]]))
+            df[[feature_name_num]] <- as.integer(factor(df[[feature]], levels=levels))
+          }
+          )
 
 setGeneric(name="feature_mapping_to_numerical_values",
                                                    def=function(theObject, df)
@@ -177,8 +199,25 @@ setMethod(f="feature_mapping_to_numerical_values",
                                               definition=function(theObject, df)
                                               {
                                                 #Todo:
-                                                is_one_hot_encoder <- 0
+                                                browser()
+                                                theObject@is_one_hot_encoder <- F
                                                 
+                                                feature_names_num <- matrix(0, dim(theObject@non_numerical_feature_names), 1)
+                                                ith <- 0
+                                                for(feature in theObject@non_numerical_feature_names)
+                                                {
+                                                  feature_name_num <- c(feature, 'Num')
+                                                  feature_names_num[ith] <- feature_name_num
+                                                  ith = ith + 1
+                                                  # Todo:
+                                                  encode_labels_in_numeric_format(theObject, df, feature)
+                                                  
+                                                  if(theObject@is_one_hot_encoder)
+                                                  {
+                                                    # Todo: implement one-hot encoding
+                                                  }
+                                                }
+                                                theObject@feature_names_num <- feature_names_num
                                                 
                                               }
                                               )
@@ -195,7 +234,7 @@ setMethod(f="prepare_data",
                         definition=function(theObject, df)
                         {
                           df <- drop_variable_before_preparation(theObject, df)
-                          browser()
+                          # browser()
                           numerical_feature_log <- numerical_feature_logical(theObject, df)
                           theObject@non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
                           theObject@numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
