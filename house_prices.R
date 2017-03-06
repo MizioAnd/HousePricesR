@@ -66,7 +66,7 @@ setMethod(f="drop_variable_before_preparation",
                                                     # print(colSums(is.na(df)))
                                                     number_of_missing_values_in_features <- colSums(is.na(df))
                                                     features_with_many_missing_values <- character(0)
-                                                    features_in_df = names(df)
+                                                    features_in_df <- names(df)
                                                     for(feature in features_in_df)
                                                       {
                                                       if(number_of_missing_values_in_features[[feature]] >= 0.3*nrow(df))
