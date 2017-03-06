@@ -7,6 +7,7 @@ library(dplyr)
 library('ggplot2')
 library('ggthemes')
 library('scales')
+library(bit64)  # may be needed for fread() for bit64::integer64 type properly displayed
 
 HousePrices <- setClass(
               # Set name of class
@@ -22,7 +23,9 @@ HousePrices <- setClass(
               # Set default values
               prototype=list(
                     df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T),
+                    # df = read.csv('/home/mizio/Documents/Kaggle/HousePrices/train.csv', stringsAsFactors = T),
                     df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T)
+                    # df_test = read.csv('/home/mizio/Documents/Kaggle/HousePrices/test.csv', stringsAsFactors = T)
                     # y_train = df$SalePrice
                     
                     # Merge training and test data together
@@ -99,9 +102,81 @@ setMethod(f="clean_data",
                       }
                       )
 
+setGeneric(name="extract_numerical_features",
+                                          def=function(theObject, df)
+                                          {
+                                                      standardGeneric("extract_numerical_features")
+                                          }
+                                          )
+
+setMethod(f="extract_numerical_features",
+                                      signature="HousePrices",
+                                      definition=function(theObject, df)
+                                      {
+                                                  # Numeric data types in R: 'numeric', 'integer'
+                                                  numerical_features <- data.frame(logical(dim(df)[2]), row.names = names(df))
+                                                  for(feature in rownames(numerical_features))
+                                                  {
+                                                    if(class(df[, get(feature)]) == "numeric" | class(df[, get(feature)]) == "integer")
+                                                    {
+                                                      numerical_features[feature,] = T
+                                                    }
+                                                  }
+                                                  # Feature names with True
+                                                  mask_index <- which(numerical_features$logical.dim.df..2..)
+                                                  return(rownames(numerical_features)[mask_index])
+                                      }
+                                      )
+
+setGeneric(name="feature_mapping_to_numerical_values",
+           def=function(theObject, df)
+           {
+                      standardGeneric("feature_mapping_to_numerical_values")
+           }
+           )
+
+setMethod(f="feature_mapping_to_numerical_values",
+          signature="HousePrices",
+          definition=function(theObject, df)
+          {
+            #Todo:
+            is_one_hot_encoder <- 0
+            
+          }
+          )
+
+setGeneric(name="prepare_data",
+                          def=function(theObject, df)
+                          {
+                                      standardGeneric("prepare_data")
+                          }
+                          )
+
+setMethod(f="prepare_data", 
+                        signature="HousePrices",
+                        definition=function(theObject, df)
+                        {
+                          df <- drop_variable_before_preparation(theObject, df)
+                          
+                          numerical_feature_names = extract_numerical_features(theObject, df)
+                          # HousePrices@
+                          
+                          is_not_import_data <- 1
+                          if(is_not_import_data)
+                          {
+                            feature_mapping_to_numerical_values(theObject, df)
+                            
+                            
+                          }
+                        }
+                        )
+
+# Todo: implement get and set in encapsulated form for public variables in constructor
+# using ex. theObject@class_var (obs. '@' works on instance like '.' in python)
 
 if(interactive())
   {
+  options(error=recover, show.error.locations=TRUE, warn=2)
   # browser()
   
   # Create instance of class
@@ -115,6 +190,8 @@ if(interactive())
   df <- slot(house_prices, "df") 
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
+  
+  df_num <- extract_numerical_features(house_prices, df)
 
   # Merge training and test data together
   train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
@@ -125,6 +202,7 @@ if(interactive())
   features_in_train <- names(df)
 
   
+  # Todo: create method
   # Encode categorical features as integers
   for(feature in features_in_train_test_merged)
     {
