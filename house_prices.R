@@ -102,14 +102,14 @@ setMethod(f="clean_data",
                       }
                       )
 
-setGeneric(name="extract_numerical_features",
+setGeneric(name="numerical_feature_logical",
                                           def=function(theObject, df)
                                           {
-                                                      standardGeneric("extract_numerical_features")
+                                                      standardGeneric("numerical_feature_logical")
                                           }
                                           )
 
-setMethod(f="extract_numerical_features",
+setMethod(f="numerical_feature_logical",
                                       signature="HousePrices",
                                       definition=function(theObject, df)
                                       {
@@ -123,27 +123,61 @@ setMethod(f="extract_numerical_features",
                                                     }
                                                   }
                                                   # Feature names with True
+                                                  # browser()
+                                                  return(numerical_features)
+                                      }
+                                      )
+
+setGeneric(name="extract_numerical_features",
+                                       def=function(theObject, numerical_features)
+                                       {
+                                                  standardGeneric("extract_numerical_features")
+                                       }
+                                       )
+
+setMethod(f="extract_numerical_features",
+                                      signature="HousePrices",
+                                      definition=function(theObject, numerical_features)
+                                      {
                                                   mask_index <- which(numerical_features$logical.dim.df..2..)
                                                   return(rownames(numerical_features)[mask_index])
                                       }
                                       )
 
+setGeneric(name="extract_non_numerical_features",
+                                             def=function(theObject, numerical_features)
+                                             {
+                                                        standardGeneric("extract_non_numerical_features")
+                                             }
+                                             )
+
+setMethod(f="extract_non_numerical_features",
+                                          signature="HousePrices",
+                                          definition=function(theObject, numerical_features)
+                                          {
+                                                        mask_index <- which(numerical_features$logical.dim.df..2.. == F)
+                                                        return(rownames(numerical_features)[mask_index])
+                                          }
+                                          )
+
+
 setGeneric(name="feature_mapping_to_numerical_values",
-           def=function(theObject, df)
-           {
-                      standardGeneric("feature_mapping_to_numerical_values")
-           }
-           )
+                                                   def=function(theObject, df)
+                                                   {
+                                                              standardGeneric("feature_mapping_to_numerical_values")
+                                                   }
+                                                   )
 
 setMethod(f="feature_mapping_to_numerical_values",
-          signature="HousePrices",
-          definition=function(theObject, df)
-          {
-            #Todo:
-            is_one_hot_encoder <- 0
-            
-          }
-          )
+                                              signature="HousePrices",
+                                              definition=function(theObject, df)
+                                              {
+                                                #Todo:
+                                                is_one_hot_encoder <- 0
+                                                
+                                                
+                                              }
+                                              )
 
 setGeneric(name="prepare_data",
                           def=function(theObject, df)
@@ -158,9 +192,10 @@ setMethod(f="prepare_data",
                         {
                           df <- drop_variable_before_preparation(theObject, df)
                           
-                          numerical_feature_names = extract_numerical_features(theObject, df)
-                          # HousePrices@
-                          
+                          numerical_feature_log <- numerical_feature_logical(theObject, df)
+                          non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
+                          numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
+
                           is_not_import_data <- 1
                           if(is_not_import_data)
                           {
@@ -191,6 +226,7 @@ if(interactive())
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
   
+  # Todo: implement numerical feature logical
   df_num <- extract_numerical_features(house_prices, df)
 
   # Merge training and test data together
