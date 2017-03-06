@@ -9,137 +9,104 @@ library('ggthemes')
 library('scales')
 
 HousePrices <- setClass(
-  # Set name of class
-  "HousePrices",
-  
-  # Define slots
-  slots = c(
-            df = "numeric",
-            df_test = "numeric",
-            df_train_test_merged = "numeric"
-            ),
-  
-  # Set default values
-  prototype=list(
-    df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T),
-    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T),
-    y_train = df$SalePrice
-    # Merge training and test data together
-    # df_train_test_merged = merge_train_and_test_dataframe(df, df_test)
-  )
-)
+              # Set name of class
+              "HousePrices",
+              
+              # Define slots
+              slots = c(
+                        df = "data.frame",
+                        df_test = "data.frame"
+                        # df_train_test_merged = "numeric"
+                        ),
+              
+              # Set default values
+              prototype=list(
+                    df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T),
+                    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T)
+                    # y_train = df$SalePrice
+                    
+                    # Merge training and test data together
+                    # df_train_test_merged = merge_train_and_test_dataframe(df, df_test)
+                    )
+              )
 
 setGeneric(name="merge_train_and_test_dataframe",
-           def=function(df, df_test)
-           {
-             standardGeneric("merge_train_and_test_dataframe")
-           }
-           )
+                                           def=function(theObject, df, df_test)
+                                           {
+                                                    standardGeneric("merge_train_and_test_dataframe")
+                                           }
+                                           )
 
 setMethod(f="merge_train_and_test_dataframe",
-          signature="HousePrices",
-          definition=function(df, df_test)
-          {
-            # Remove Id feature and SalePrice (stored in y_train)
-            df$Id <- NULL
-            df$SalePrice <- NULL
-            # Id_column = test_data$Id
-            df_test$Id <- NULL
-            return(rbind(df, df_test))
-          }
-          )
-
-merge_train_and_test_dataframe=function(df, df_test)
-{
-  # Remove Id feature and SalePrice (stored in y_train)
-  df$Id <- NULL
-  df$SalePrice <- NULL
-  # Id_column = test_data$Id
-  df_test$Id <- NULL
-  return(rbind(df, df_test))
-}
+                                          signature="HousePrices",
+                                          definition=function(theObject, df, df_test)
+                                          {
+                                                    # Remove Id feature and SalePrice (stored in y_train)
+                                                    df$Id <- NULL
+                                                    df$SalePrice <- NULL
+                                                    # Id_column = test_data$Id
+                                                    df_test$Id <- NULL
+                                                    return(rbind(df, df_test))
+                                          }
+                                          )
 
 setGeneric(name="drop_variable_before_preparation",
-           def=function(df)
-           {
-             standardGeneric("drop_variable_before_preparation")
-           }
-           )
+                                         def=function(theObject, df)
+                                         {
+                                                    standardGeneric("drop_variable_before_preparation")
+                                         }
+                                         )
 
 setMethod(f="drop_variable_before_preparation",
-          signature="HousePrices",
-          definition=function(df)
-          {
-            # Drop features that have certain procentage of missing values considering the training data and test, 
-            # since they will undergo imputation together.
-            print(colSums(is.na(df_train_test_merged)))
-            number_of_missing_values_in_features <- colSums(is.na(df_train_test_merged))
-            features_with_many_missing_values <- character(0)
-            
-            for(feature in features_in_train)
-              {
-              if(number_of_missing_values_in_features[[feature]] >= 0.3*nrow(df_train_test_merged))
-                {
-                features_with_many_missing_values <- append(features_with_many_missing_values, feature)
-                }
-              }
-            print(features_with_many_missing_values)
-            df_train_test_merged <- df_train_test_merged[, -features_with_many_missing_values, with=F]
-            return(df_train_test_merged)
-          }
-          )
-
-drop_variable_before_preparation=function(df)
-{
-  # Drop features that have certain procentage of missing values considering the training data and test, 
-  # since they will undergo imputation together.
-  print(colSums(is.na(df_train_test_merged)))
-  number_of_missing_values_in_features <- colSums(is.na(df_train_test_merged))
-  features_with_many_missing_values <- character(0)
-  
-  for(feature in features_in_train){
-    if(number_of_missing_values_in_features[[feature]] >= 0.3*nrow(df_train_test_merged)){
-      features_with_many_missing_values <- append(features_with_many_missing_values, feature)
-    }
-  }
-  print(features_with_many_missing_values)
-  df_train_test_merged <- df_train_test_merged[, -features_with_many_missing_values, with=F]
-  return(df_train_test_merged)
-}
-
-
-
-
-
-
-
+                                        signature="HousePrices",
+                                        definition=function(theObject, df)
+                                        {
+                                                    # Drop features that have certain procentage of missing values considering the training data and test, 
+                                                    # since they will undergo imputation together.
+                                                    # print(colSums(is.na(df)))
+                                                    number_of_missing_values_in_features <- colSums(is.na(df))
+                                                    features_with_many_missing_values <- character(0)
+                                                    features_in_df = names(df)
+                                                    for(feature in features_in_df)
+                                                      {
+                                                      if(number_of_missing_values_in_features[[feature]] >= 0.3*nrow(df))
+                                                        {
+                                                        features_with_many_missing_values <- append(features_with_many_missing_values, feature)
+                                                        }
+                                                      }
+                                                    print(features_with_many_missing_values)
+                                                    df <- df[, -features_with_many_missing_values, with=F]
+                                                    return(df)
+                                        }
+                                        )
 
 
 if(interactive()){
-  browser()
+  # browser()
+  
+  # Create instance of class
+  house_prices <- HousePrices()
+  is.object(house_prices)
+  isS4(house_prices)
   
   
   
   # Create object to load data
-  train_data <- fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T)
-  test_data <- fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T)
-  y_train <- train_data$SalePrice
-  
-  # Remove Id feature and SalePrice (stored in y_train)
-  train_data$Id <- NULL
-  train_data$SalePrice <- NULL
-  # Id_column = test_data$Id
-  test_data$Id <- NULL
-  
+  df <- slot(house_prices, "df") 
+  df_test <- slot(house_prices, "df_test")
+  y_train <- df$SalePrice
+
   # Merge training and test data together
-  train_test_merged = rbind(train_data, test_data)
+  train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
+  features_in_train_test_merged <- names(train_test_merged)
   
   # Number of rows in training data for later splitting
-  rows_in_train <- nrow(train_data)
-  features_in_train <- names(train_data)
+  rows_in_train <- nrow(df)
+  features_in_train <- names(df)
+
   
   # Encode categorical features as integers
-  for(feature in features_in_train){
+  for(feature in features_in_train_test_merged){
     if(class(train_test_merged[[feature]]) == "character"){
       levels = sort(unique(train_test_merged[[feature]]))
       train_test_merged[[feature]] = as.integer(factor(train_test_merged[[feature]], 
@@ -150,17 +117,9 @@ if(interactive()){
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
-  number_of_missing_values_in_features <- colSums(is.na(train_test_merged))
-  features_with_many_missing_values <- character(0)
+  train_test_merged <- drop_variable_before_preparation(house_prices, train_test_merged)
   
-  for(feature in features_in_train){
-    if(number_of_missing_values_in_features[[feature]] >= 0.3*nrow(train_test_merged)){
-      features_with_many_missing_values <- append(features_with_many_missing_values, feature)
-    }
-  }
-  print(features_with_many_missing_values)
-  train_test_merged <- train_test_merged[, -features_with_many_missing_values, with=F]
-  
+  # Todo: create method clean that calls mice
   # Todo: implement one-hot encoding
   # Todo: implement feature engineering to correct for skewness and apply log1p to numerical features 
   
