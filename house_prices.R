@@ -16,17 +16,21 @@ HousePrices <- setClass(
               # Define slots
               slots = c(
                         df = "data.frame",
-                        df_test = "data.frame"
+                        df_test = "data.frame",
                         # df_train_test_merged = "numeric"
+                        numerical_feature_names = "character",
+                        non_numerical_feature_names = "character"
                         ),
               
               # Set default values
               prototype=list(
                     df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T),
                     # df = read.csv('/home/mizio/Documents/Kaggle/HousePrices/train.csv', stringsAsFactors = T),
-                    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T)
+                    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T),
                     # df_test = read.csv('/home/mizio/Documents/Kaggle/HousePrices/test.csv', stringsAsFactors = T)
                     # y_train = df$SalePrice
+                    numerical_feature_names = c(),
+                    non_numerical_feature_names = c()
                     
                     # Merge training and test data together
                     # df_train_test_merged = merge_train_and_test_dataframe(df, df_test)
@@ -191,10 +195,10 @@ setMethod(f="prepare_data",
                         definition=function(theObject, df)
                         {
                           df <- drop_variable_before_preparation(theObject, df)
-                          
+                          browser()
                           numerical_feature_log <- numerical_feature_logical(theObject, df)
-                          non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
-                          numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
+                          theObject@non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
+                          theObject@numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
 
                           is_not_import_data <- 1
                           if(is_not_import_data)
@@ -203,6 +207,7 @@ setMethod(f="prepare_data",
                             
                             
                           }
+                          return(df)
                         }
                         )
 
@@ -226,9 +231,11 @@ if(interactive())
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
   
-  # Todo: implement numerical feature logical
-  df_num <- extract_numerical_features(house_prices, df)
-
+  # Todo: testing functions
+  numerical_feature_log <- numerical_feature_logical(house_prices, df)
+  df_num <- extract_numerical_features(house_prices, numerical_feature_log)
+  df_prepared <- prepare_data(house_prices, df)
+  
   # Merge training and test data together
   train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
   features_in_train_test_merged <- names(train_test_merged)
