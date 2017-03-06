@@ -80,8 +80,28 @@ setMethod(f="drop_variable_before_preparation",
                                         }
                                         )
 
+setGeneric(name="clean_data",
+                       def=function(theObject, df)
+                       {
+                                  standardGeneric("clean_data")
+                       }
+                       )
 
-if(interactive()){
+setMethod(f="clean_data",
+                      signature="HousePrices",
+                      definition=function(theObject, df)
+                      {
+                                  # Imputation with MICE
+                                  set.seed(0)
+                                  df <- as.data.frame(df)
+                                  df_imputed <- complete(mice(df))  # method='rf'))
+                                  return(df_imputed)
+                      }
+                      )
+
+
+if(interactive())
+  {
   # browser()
   
   # Create instance of class
@@ -106,33 +126,40 @@ if(interactive()){
 
   
   # Encode categorical features as integers
-  for(feature in features_in_train_test_merged){
-    if(class(train_test_merged[[feature]]) == "character"){
+  for(feature in features_in_train_test_merged)
+    {
+    if(class(train_test_merged[[feature]]) == "character")
+      {
       levels = sort(unique(train_test_merged[[feature]]))
       train_test_merged[[feature]] = as.integer(factor(train_test_merged[[feature]], 
                                                        levels=levels))
+      }
     }
-  }
   
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
   train_test_merged <- drop_variable_before_preparation(house_prices, train_test_merged)
   
-  # Todo: create method clean that calls mice
   # Todo: implement one-hot encoding
   # Todo: implement feature engineering to correct for skewness and apply log1p to numerical features 
   
   # Imputation with MICE
-  set.seed(0)
-  imputed_dataframe_train_and_test <- as.data.frame(train_test_merged)
-  res <- complete(mice(imputed_dataframe_train_and_test))  # method='rf'))
-  
-  # Plot sale price distributions
+  res <- clean_data(house_prices, train_test_merged)
+
+  # Check how distributions change after imputation
+  # Plot LotFrontage price distributions
   par(mfrow=c(1,2))
-  hist(imputed_dataframe_train_and_test$LotFrontage, freq=F, main='LotFrontage: Original Data', 
+  hist(train_test_merged$LotFrontage, freq=F, main='LotFrontage: Original Data', 
        col='darkgreen')
   hist(res$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
+       col='lightgreen')
+  
+  # Plot GarageYrBlt price distributions
+  par(mfrow=c(1,2))
+  hist(train_test_merged$GarageYrBlt, freq=F, main='GarageYrBlt: Original Data', 
+       col='darkgreen')
+  hist(res$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
        col='lightgreen')
     
   # Splitting merged data set
@@ -176,5 +203,4 @@ if(interactive()){
   submission$SalePrice <- output_xgb_cv
   # submission$Id <- Id_column
   write.csv(submission, save_path, row.names=F)
-
-}
+  }
