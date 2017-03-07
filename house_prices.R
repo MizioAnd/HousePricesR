@@ -27,9 +27,9 @@ HousePrices <- setClass(
               
               # Set default values
               prototype=list(
-                    df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T),
+                    df = fread('/home/mizio/Documents/Kaggle/HousePrices/train.csv', showProgress = T, data.table = FALSE),
                     # df = read.csv('/home/mizio/Documents/Kaggle/HousePrices/train.csv', stringsAsFactors = T),
-                    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T),
+                    df_test = fread('/home/mizio/Documents/Kaggle/HousePrices/test.csv', showProgress = T, data.table = FALSE),
                     # df_test = read.csv('/home/mizio/Documents/Kaggle/HousePrices/test.csv', stringsAsFactors = T)
                     # y_train = df$SalePrice
                     numerical_feature_names = c(),
@@ -87,7 +87,7 @@ setMethod(f="drop_variable_before_preparation",
                                                         }
                                                       }
                                                     print(features_with_many_missing_values)
-                                                    df <- df[, -features_with_many_missing_values, with=F]
+                                                    df <- df[, !(names(df) %in% features_with_many_missing_values)]
                                                     return(df)
                                         }
                                         )
@@ -126,7 +126,8 @@ setMethod(f="numerical_feature_logical",
                                                   numerical_features <- data.frame(logical(dim(df)[2]), row.names = names(df))
                                                   for(feature in rownames(numerical_features))
                                                   {
-                                                    if(class(df[, get(feature)]) == "numeric" || class(df[, get(feature)]) == "integer")
+                                                    # if(class(df[, get(feature)]) == "numeric" || class(df[, get(feature)]) == "integer")
+                                                    if(class(df[, feature]) == "numeric" || class(df[, feature]) == "integer")
                                                     {
                                                       numerical_features[feature,] = T
                                                     }
@@ -309,6 +310,11 @@ if(interactive())
   hist(res$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
        col='lightgreen')
     
+  # Extracting numerical feature columns
+  res_numerical_feature_log <- numerical_feature_logical(house_prices, res)
+  res_numerical_feature <- extract_numerical_features(house_prices, res_numerical_feature_log)
+  res_num <- res[, res_numerical_features]
+  
   # Splitting merged data set
   x_train <- res[1:rows_in_train,]
   x_test <- res[(rows_in_train + 1):nrow(res),]
