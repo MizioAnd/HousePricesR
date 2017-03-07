@@ -126,7 +126,7 @@ setMethod(f="numerical_feature_logical",
                                                   numerical_features <- data.frame(logical(dim(df)[2]), row.names = names(df))
                                                   for(feature in rownames(numerical_features))
                                                   {
-                                                    if(class(df[, get(feature)]) == "numeric" | class(df[, get(feature)]) == "integer")
+                                                    if(class(df[, get(feature)]) == "numeric" || class(df[, get(feature)]) == "integer")
                                                     {
                                                       numerical_features[feature,] = T
                                                     }
@@ -179,11 +179,12 @@ setMethod(f="encode_labels_in_numeric_format",
           signature="HousePrices",
           definition=function(theObject, df, feature)
           {
-            # Todo:
             # Encode categorical features as integers
-            feature_name_num <- c(feature, "Num")
+            # browser()
+            feature_name_num <- paste0(feature, 'Num', collapse='')
             levels <- sort(unique(df[[feature]]))
             df[[feature_name_num]] <- as.integer(factor(df[[feature]], levels=levels))
+            return(df)
           }
           )
 
@@ -198,27 +199,25 @@ setMethod(f="feature_mapping_to_numerical_values",
                                               signature="HousePrices",
                                               definition=function(theObject, df)
                                               {
-                                                #Todo:
-                                                browser()
                                                 theObject@is_one_hot_encoder <- F
                                                 
-                                                feature_names_num <- matrix(0, dim(theObject@non_numerical_feature_names), 1)
-                                                ith <- 0
+                                                feature_names_num <- vector("character", length=length(theObject@non_numerical_feature_names))
+                                                ith <- 1
                                                 for(feature in theObject@non_numerical_feature_names)
                                                 {
-                                                  feature_name_num <- c(feature, 'Num')
+                                                  feature_name_num <- paste0(feature, 'Num', collapse='')
                                                   feature_names_num[ith] <- feature_name_num
                                                   ith = ith + 1
-                                                  # Todo:
-                                                  encode_labels_in_numeric_format(theObject, df, feature)
+                                                  df <- encode_labels_in_numeric_format(theObject, df, feature)
                                                   
                                                   if(theObject@is_one_hot_encoder)
                                                   {
                                                     # Todo: implement one-hot encoding
                                                   }
                                                 }
+                                                # browser()
                                                 theObject@feature_names_num <- feature_names_num
-                                                
+                                                return(df)
                                               }
                                               )
 
@@ -242,7 +241,7 @@ setMethod(f="prepare_data",
                           is_not_import_data <- 1
                           if(is_not_import_data)
                           {
-                            feature_mapping_to_numerical_values(theObject, df)
+                            df <- feature_mapping_to_numerical_values(theObject, df)
                             
                             
                           }
@@ -273,40 +272,28 @@ if(interactive())
   # Todo: testing functions
   numerical_feature_log <- numerical_feature_logical(house_prices, df)
   df_num <- extract_numerical_features(house_prices, numerical_feature_log)
-  df_prepared <- prepare_data(house_prices, df)
   
   # Merge training and test data together
   train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
-  features_in_train_test_merged <- names(train_test_merged)
-  
+
   # Number of rows in training data for later splitting
   rows_in_train <- nrow(df)
   features_in_train <- names(df)
 
-  
-  # Todo: create method
-  # Encode categorical features as integers
-  for(feature in features_in_train_test_merged)
-    {
-    if(class(train_test_merged[[feature]]) == "character")
-      {
-      levels = sort(unique(train_test_merged[[feature]]))
-      train_test_merged[[feature]] = as.integer(factor(train_test_merged[[feature]], 
-                                                       levels=levels))
-      }
-    }
-  
+  # Prepare data
+  train_test_merged <- prepare_data(house_prices, train_test_merged)
+
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
-  train_test_merged <- drop_variable_before_preparation(house_prices, train_test_merged)
-  
+
   # Todo: implement one-hot encoding
   # Todo: implement feature engineering to correct for skewness and apply log1p to numerical features 
   
   # Imputation with MICE
   res <- clean_data(house_prices, train_test_merged)
-
+  print(colSums(is.na(res)))
+  
   # Check how distributions change after imputation
   # Plot LotFrontage price distributions
   par(mfrow=c(1,2))
@@ -327,6 +314,7 @@ if(interactive())
   x_test <- res[(rows_in_train + 1):nrow(res),]
   
   # casting all object types to numeric type
+  # Todo: extract numerical features
   x_train[] <- lapply(x_train, as.numeric)
   x_test[] <- lapply(x_test, as.numeric)
   
