@@ -189,6 +189,36 @@ setMethod(f="encode_labels_in_numeric_format",
           }
           )
 
+setGeneric(name="one_hot_encoder",
+                             def=function(theObject, df, feature)
+                             {
+                                        standardGeneric("one_hot_encoder")
+                             }
+                             )
+
+setMethod(f="one_hot_encoder",
+                          signature="HousePrices",
+                          definition=function(theObject, df, feature)
+                          {
+                            levels <- sort(unique(df[[feature]]))
+                            levels_num <- lapply(levels, function(x) paste0(feature, x, collapse=''))
+                            feature_num <- paste0(feature, 'Num', collapse='')
+                            ith <- 1
+                            # browser()
+                            for(level in levels_num)
+                            {
+                              df[level] <- as.integer(df[feature_num] == ith)
+                              ith <- ith + 1
+                            }
+                            
+                            # df_all_dummy <- acm.disjonctif(df[feature])
+                            # df[feature] <- NULL
+                            # df <- cbind(df, df_all_dummy)
+                            return(df)
+                            
+                          }
+                          )
+
 setGeneric(name="feature_mapping_to_numerical_values",
                                                    def=function(theObject, df)
                                                    {
@@ -200,7 +230,7 @@ setMethod(f="feature_mapping_to_numerical_values",
                                               signature="HousePrices",
                                               definition=function(theObject, df)
                                               {
-                                                theObject@is_one_hot_encoder <- F
+                                                theObject@is_one_hot_encoder <- T
                                                 
                                                 feature_names_num <- vector("character", length=length(theObject@non_numerical_feature_names))
                                                 ith <- 1
@@ -214,9 +244,10 @@ setMethod(f="feature_mapping_to_numerical_values",
                                                   if(theObject@is_one_hot_encoder)
                                                   {
                                                     # Todo: implement one-hot encoding
+                                                    df <- one_hot_encoder(theObject, df, feature)
                                                   }
                                                 }
-                                                # browser()
+                                                browser()
                                                 theObject@feature_names_num <- feature_names_num
                                                 return(df)
                                               }
@@ -312,15 +343,14 @@ if(interactive())
     
   # Extracting numerical feature columns
   res_numerical_feature_log <- numerical_feature_logical(house_prices, res)
-  res_numerical_feature <- extract_numerical_features(house_prices, res_numerical_feature_log)
-  res_num <- res[, res_numerical_features]
+  res_numerical_features <- extract_numerical_features(house_prices, res_numerical_feature_log)
+  res <- res[, res_numerical_features]
   
   # Splitting merged data set
   x_train <- res[1:rows_in_train,]
   x_test <- res[(rows_in_train + 1):nrow(res),]
   
-  # casting all object types to numeric type
-  # Todo: extract numerical features
+  # Casting all types to numeric type (also integer)
   x_train[] <- lapply(x_train, as.numeric)
   x_test[] <- lapply(x_test, as.numeric)
   
