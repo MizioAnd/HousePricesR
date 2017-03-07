@@ -8,6 +8,7 @@ library('ggplot2')
 library('ggthemes')
 library('scales')
 library(bit64)  # may be needed for fread() for bit64::integer64 type properly displayed
+library(moments)  # imports skewness
 
 HousePrices <- setClass(
               # Set name of class
@@ -314,6 +315,27 @@ setMethod(f="set_is_one_hot_encoder",
                                   }
                                   )
 
+setGeneric(name="skew_correction",
+           def=function(theObject, df, numerical_features)
+           {
+             standardGeneric("skew_correction")
+           }
+           )
+
+setMethod(f="skew_correction",
+          signature="HousePrices",
+          definition=function(theObject, df, numerical_features)
+          {
+            browser()
+            skewed_feats <- lapply(df[complete.cases(df[numerical_features]), numerical_features], 
+                                   function(x) skewness(x))  # compute skewness
+            skewed_feats <- skewed_feats[skewed_feats > 0.75]
+            skewed_feats = names(skewed_feats)
+            df[, skewed_feats] <- log1p(df[skewed_feats])
+            
+          }
+          )
+
 setGeneric(name="feature_engineering",
            def=function(theObject, df)
            {
@@ -325,6 +347,7 @@ setMethod(f="feature_engineering",
           signature="HousePrices",
           definition=function(theObject, df)
           {
+            # browser()
             is_skewness_correction_for_all_features <-  1
             if(is_skewness_correction_for_all_features)
             {
@@ -336,17 +359,13 @@ setMethod(f="feature_engineering",
               }
               numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
               
-              if(theObject@is_one_hot_encoder)
-              {
-                numerical_feature_names_of_non_modified_df <- numerical_feature_names_of_non_modified_df.values
-              }
-              else
+              if(!(theObject@is_one_hot_encoder))
               {
                 numerical_feature_names_of_non_modified_df <- rbind(theObject@feature_names_num, 
                                                                     numerical_feature_names_of_non_modified_df)
               }
-              relevant_features = names(df[, !(numerical_feature_names_of_non_modified_df %in% 'Id')])
-              skew_correction(theObject, df, relevant_features)
+              relevant_features <- numerical_feature_names_of_non_modified_df
+              df[, relevant_features] <- skew_correction(theObject, df, relevant_features)
             }
             else
             {
