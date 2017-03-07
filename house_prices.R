@@ -230,17 +230,9 @@ setMethod(f="feature_mapping_to_numerical_values",
                                               signature="HousePrices",
                                               definition=function(theObject, df)
                                               {
-                                                # set_is_one_hot_encoder(theObject, T)
-                                                # slot(theObject, "is_one_hot_encoder", check=T) <- T
-                                                theObject@is_one_hot_encoder <- T
-                                                
-                                                feature_names_num <- vector("character", length=length(theObject@non_numerical_feature_names))
                                                 ith <- 1
                                                 for(feature in theObject@non_numerical_feature_names)
                                                 {
-                                                  feature_name_num <- paste0(feature, 'Num', collapse='')
-                                                  feature_names_num[ith] <- feature_name_num
-                                                  ith = ith + 1
                                                   df <- encode_labels_in_numeric_format(theObject, df, feature)
                                                   
                                                   if(theObject@is_one_hot_encoder)
@@ -248,11 +240,32 @@ setMethod(f="feature_mapping_to_numerical_values",
                                                     df <- one_hot_encoder(theObject, df, feature)
                                                   }
                                                 }
-                                                theObject@feature_names_num <- feature_names_num
-                                                theObject <- callNextMethod(theObject)
                                                 return(df)
                                               }
                                               )
+
+setGeneric(name="feature_names_num",
+           def=function(theObject, df)
+           {
+             standardGeneric("feature_names_num")
+           }
+           )
+
+setMethod(f="feature_names_num",
+          signature="HousePrices",
+          definition=function(theObject, df)
+          {
+            feature_names_num <- vector("character", length=length(theObject@non_numerical_feature_names))
+            ith <- 1
+            for(feature in theObject@non_numerical_feature_names)
+            {
+              feature_name_num <- paste0(feature, 'Num', collapse='')
+              feature_names_num[ith] <- feature_name_num
+              ith = ith + 1
+            }
+            return(feature_names_num)
+          }
+          )
 
 setGeneric(name="drop_features_num",
            def=function(theObject, df)
@@ -266,6 +279,7 @@ setMethod(f="drop_features_num",
           definition=function(theObject, df)
           {
             df <- df[, !(names(df) %in% theObject@feature_names_num)]
+            return(df)
           }
           )
 
@@ -316,19 +330,20 @@ setMethod(f="prepare_data",
                           numerical_feature_log <- numerical_feature_logical(theObject, df)
                           theObject@non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
                           theObject@numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
-
+                          theObject@is_one_hot_encoder <- T
+                          
+                          
                           is_not_import_data <- 1
                           if(is_not_import_data)
                           {
-                            browser()
+                            # browser()
+                            theObject@feature_names_num <- feature_names_num(theObject, df)
                             df <- feature_mapping_to_numerical_values(theObject, df)
-                            # if(theObject@is_one_hot_encoder)
-                            # slot(theObject, "is_one_hot_encoder")
-                            if(get_is_one_hot_encoder(theObject))
+                            if(theObject@is_one_hot_encoder)
                             {
                               df <- drop_features_num(theObject, df)
                             }
-                            browser()
+                            # browser()
                           }
                           return(df)
                         }
@@ -367,7 +382,8 @@ if(interactive())
 
   # Prepare data
   train_test_merged <- prepare_data(house_prices, train_test_merged)
-
+  browser()
+  
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
