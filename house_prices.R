@@ -230,6 +230,8 @@ setMethod(f="feature_mapping_to_numerical_values",
                                               signature="HousePrices",
                                               definition=function(theObject, df)
                                               {
+                                                # set_is_one_hot_encoder(theObject, T)
+                                                # slot(theObject, "is_one_hot_encoder", check=T) <- T
                                                 theObject@is_one_hot_encoder <- T
                                                 
                                                 feature_names_num <- vector("character", length=length(theObject@non_numerical_feature_names))
@@ -243,15 +245,60 @@ setMethod(f="feature_mapping_to_numerical_values",
                                                   
                                                   if(theObject@is_one_hot_encoder)
                                                   {
-                                                    # Todo: implement one-hot encoding
                                                     df <- one_hot_encoder(theObject, df, feature)
                                                   }
                                                 }
-                                                browser()
                                                 theObject@feature_names_num <- feature_names_num
+                                                theObject <- callNextMethod(theObject)
                                                 return(df)
                                               }
                                               )
+
+setGeneric(name="drop_features_num",
+           def=function(theObject, df)
+           {
+             standardGeneric("drop_features_num")
+           }
+           )
+
+setMethod(f="drop_features_num",
+          signature="HousePrices",
+          definition=function(theObject, df)
+          {
+            df <- df[, !(names(df) %in% theObject@feature_names_num)]
+          }
+          )
+
+setGeneric(name="get_is_one_hot_encoder",
+                                     def=function(theObject)
+                                     {
+                                                standarGeneric("get_is_one_hot_encoder")
+                                     }
+                                     )
+
+setMethod(f="get_is_one_hot_encoder",
+                                  signature="HousePrices",
+                                  definition=function(theObject)
+                                  {
+                                    return(theObject@is_one_hot_encoder)
+                                  }
+                                  )
+
+setGeneric(name="set_is_one_hot_encoder",
+                                     def=function(theObject, is_one_hot_encoder)
+                                     {
+                                       standarGeneric("set_is_one_hot_encoder")
+                                     }
+                                     )
+
+setMethod(f="set_is_one_hot_encoder",
+                                  signature="HousePrices",
+                                  definition=function(theObject, is_one_hot_encoder)
+                                  {
+                                    theObject@is_one_hot_encoder <- is_one_hot_encoder
+                                    return(theObject)
+                                  }
+                                  )
 
 setGeneric(name="prepare_data",
                           def=function(theObject, df)
@@ -273,9 +320,15 @@ setMethod(f="prepare_data",
                           is_not_import_data <- 1
                           if(is_not_import_data)
                           {
+                            browser()
                             df <- feature_mapping_to_numerical_values(theObject, df)
-                            
-                            
+                            # if(theObject@is_one_hot_encoder)
+                            # slot(theObject, "is_one_hot_encoder")
+                            if(get_is_one_hot_encoder(theObject))
+                            {
+                              df <- drop_features_num(theObject, df)
+                            }
+                            browser()
                           }
                           return(df)
                         }
