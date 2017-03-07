@@ -314,6 +314,55 @@ setMethod(f="set_is_one_hot_encoder",
                                   }
                                   )
 
+setGeneric(name="feature_engineering",
+           def=function(theObject, df)
+           {
+             standardGeneric("feature_engineering")
+           }
+           )
+
+setMethod(f="feature_engineering",
+          signature="HousePrices",
+          definition=function(theObject, df)
+          {
+            is_skewness_correction_for_all_features <-  1
+            if(is_skewness_correction_for_all_features)
+            {
+              # Correcting for skewness
+              # Treat all numerical variables that were not one-hot encoded
+              if(any(names(df) %in% 'SalePrice'))
+              {
+                # self.is_with_log1p_SalePrice <- 1
+              }
+              numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
+              
+              if(theObject@is_one_hot_encoder)
+              {
+                numerical_feature_names_of_non_modified_df <- numerical_feature_names_of_non_modified_df.values
+              }
+              else
+              {
+                numerical_feature_names_of_non_modified_df <- rbind(theObject@feature_names_num, 
+                                                                    numerical_feature_names_of_non_modified_df)
+              }
+              relevant_features = names(df[, !(numerical_feature_names_of_non_modified_df %in% 'Id')])
+              skew_correction(theObject, df, relevant_features)
+            }
+            else
+            {
+                # Only scale down sale price, since all leave other numerical features standardized.
+                if(any(names(df) %in% 'SalePrice'))
+                {
+                  # Todo: find a way to set flag
+                  # self.is_with_log1p_SalePrice = 1
+                  df$SalePrice <- log1p(df$SalePrice)
+                }
+            }
+            return(df)
+          }
+          )
+
+
 setGeneric(name="prepare_data",
                           def=function(theObject, df)
                           {
@@ -343,6 +392,7 @@ setMethod(f="prepare_data",
                             {
                               df <- drop_features_num(theObject, df)
                             }
+                            df <- feature_engineering(theObject, df)
                             # browser()
                           }
                           return(df)
