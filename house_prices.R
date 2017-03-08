@@ -367,14 +367,14 @@ setMethod(f="feature_engineering",
               # Correcting for skewness
               # Treat all numerical variables that were not one-hot encoded
               numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
-              
+              browser()
               if(!(theObject@is_one_hot_encoder))
               {
                 numerical_feature_names_of_non_modified_df <- c(theObject@feature_names_num, 
                                                                 numerical_feature_names_of_non_modified_df)
               }
               relevant_features <- numerical_feature_names_of_non_modified_df
-              df <- skew_correction(theObject, df[, relevant_features])
+              df[, relevant_features] <- skew_correction(theObject, df[, relevant_features])
             }
             else
             {
@@ -418,6 +418,7 @@ setMethod(f="prepare_data",
                             {
                               df <- drop_features_num(theObject, df)
                             }
+                            browser()
                             df <- feature_engineering(theObject, df)
                             df <- clean_data(theObject, df)
                             # df <- feature_scaling(theObject, df)
