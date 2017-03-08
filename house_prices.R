@@ -341,7 +341,7 @@ setMethod(f="skew_correction",
           signature=c("HousePrices", "integer", "NULL"),
           definition=function(theObject, df, numerical_features)
           {
-            browser()
+            # browser()
             is_skewed_feat <- skewness(df) > 0.75  # compute skewness
             if(is_skewed_feat)
             {
@@ -376,7 +376,8 @@ setMethod(f="feature_engineering",
                                                                     numerical_feature_names_of_non_modified_df)
               }
               relevant_features <- numerical_feature_names_of_non_modified_df
-              df[, relevant_features] <- skew_correction(theObject, df, relevant_features)
+              browser()
+              df <- skew_correction(theObject, df, relevant_features)
             }
             else
             {
@@ -423,6 +424,7 @@ setMethod(f="prepare_data",
                               df <- drop_features_num(theObject, df)
                             }
                             df <- feature_engineering(theObject, df)
+                            df <- clean_data(theObject, df)
                             # browser()
                           }
                           return(df)
@@ -468,8 +470,7 @@ if(interactive())
 
   # Prepare data
   train_test_merged <- prepare_data(house_prices, train_test_merged)
-  browser()
-  
+
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
@@ -478,7 +479,8 @@ if(interactive())
   # Todo: implement feature engineering to correct for skewness and apply log1p to numerical features 
   
   # Imputation with MICE
-  res <- clean_data(house_prices, train_test_merged)
+  res <- train_test_merged
+  # res <- clean_data(house_prices, train_test_merged)
   print(colSums(is.na(res)))
   
   # Check how distributions change after imputation
