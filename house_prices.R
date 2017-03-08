@@ -318,18 +318,17 @@ setMethod(f="set_is_one_hot_encoder",
                                   )
 
 setGeneric(name="skew_correction",
-           def=function(theObject, df, numerical_features)
+           def=function(theObject, df)
            {
              standardGeneric("skew_correction")
            }
            )
 
 setMethod(f="skew_correction",
-          signature=c("HousePrices", "data.frame", "character"),
-          definition=function(theObject, df, numerical_features)
+          signature=c("HousePrices", "data.frame"),
+          definition=function(theObject, df)
           {
-            skewed_feats <- lapply(df[complete.cases(df[numerical_features]), numerical_features], 
-                                   function(x) skewness(x))  # compute skewness
+            skewed_feats <- lapply(df, function(x) skewness(x[!is.na(x)]))  # compute skewness
             skewed_feats <- skewed_feats[skewed_feats > 0.75]
             skewed_feats = names(skewed_feats)
             df[, skewed_feats] <- log1p(df[skewed_feats])
@@ -338,8 +337,8 @@ setMethod(f="skew_correction",
           )
 
 setMethod(f="skew_correction",
-          signature=c("HousePrices", "integer", "NULL"),
-          definition=function(theObject, df, numerical_features)
+          signature=c("HousePrices", "integer"),
+          definition=function(theObject, df)
           {
             # browser()
             is_skewed_feat <- skewness(df) > 0.75  # compute skewness
@@ -362,7 +361,6 @@ setMethod(f="feature_engineering",
           signature="HousePrices",
           definition=function(theObject, df)
           {
-            # browser()
             is_skewness_correction_for_all_features <-  1
             if(is_skewness_correction_for_all_features)
             {
@@ -372,20 +370,17 @@ setMethod(f="feature_engineering",
               
               if(!(theObject@is_one_hot_encoder))
               {
-                numerical_feature_names_of_non_modified_df <- rbind(theObject@feature_names_num, 
-                                                                    numerical_feature_names_of_non_modified_df)
+                numerical_feature_names_of_non_modified_df <- c(theObject@feature_names_num, 
+                                                                numerical_feature_names_of_non_modified_df)
               }
               relevant_features <- numerical_feature_names_of_non_modified_df
-              browser()
-              df <- skew_correction(theObject, df, relevant_features)
+              df <- skew_correction(theObject, df[, relevant_features])
             }
             else
             {
-                # Only scale down sale price, since all leave other numerical features standardized.
+                # Only scale down sale price and leave other numerical features standardized.
                 if(any(names(df) %in% 'SalePrice'))
                 {
-                  # Todo: find a way to set flag
-                  # self.is_with_log1p_SalePrice = 1
                   df$SalePrice <- log1p(df$SalePrice)
                 }
             }
@@ -425,6 +420,7 @@ setMethod(f="prepare_data",
                             }
                             df <- feature_engineering(theObject, df)
                             df <- clean_data(theObject, df)
+                            # df <- feature_scaling(theObject, df)
                             # browser()
                           }
                           return(df)
@@ -441,7 +437,7 @@ if(interactive())
   
   # Create instance of class
   house_prices <- HousePrices()  # , is_with_log1p_SalePrice=T)
-  house_prices@is_one_hot_encoder <- T
+  house_prices@is_one_hot_encoder <- F
   house_prices@is_with_log1p_SalePrice <- T
   
   # house_prices <- new("HousePrices", is_one_hot_encoder=T)#, is_with_log1p_SalePrice=T)
@@ -454,12 +450,10 @@ if(interactive())
   df <- slot(house_prices, "df") 
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
-  # browser()
-  y_train <- skew_correction(house_prices, y_train, NULL)
   
   # Todo: testing functions
-  numerical_feature_log <- numerical_feature_logical(house_prices, df)
-  df_num <- extract_numerical_features(house_prices, numerical_feature_log)
+  # numerical_feature_log <- numerical_feature_logical(house_prices, df)
+  # df_num <- extract_numerical_features(house_prices, numerical_feature_log)
   
   # Merge training and test data together
   train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
@@ -469,43 +463,40 @@ if(interactive())
   features_in_train <- names(df)
 
   # Prepare data
-  train_test_merged <- prepare_data(house_prices, train_test_merged)
+  train_test_merged_prepared <- prepare_data(house_prices, train_test_merged)
+  y_train <- skew_correction(house_prices, y_train)
+  
 
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
   print(colSums(is.na(train_test_merged)))
 
-  # Todo: implement one-hot encoding
-  # Todo: implement feature engineering to correct for skewness and apply log1p to numerical features 
-  
-  # Imputation with MICE
-  res <- train_test_merged
-  # res <- clean_data(house_prices, train_test_merged)
-  print(colSums(is.na(res)))
+  # Check df after imputation with MICE
+  print(colSums(is.na(train_test_merged_prepared)))
   
   # Check how distributions change after imputation
   # Plot LotFrontage price distributions
   par(mfrow=c(1,2))
   hist(train_test_merged$LotFrontage, freq=F, main='LotFrontage: Original Data', 
        col='darkgreen')
-  hist(res$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
+  hist(train_test_merged_prepared$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
        col='lightgreen')
   
   # Plot GarageYrBlt price distributions
   par(mfrow=c(1,2))
   hist(train_test_merged$GarageYrBlt, freq=F, main='GarageYrBlt: Original Data', 
        col='darkgreen')
-  hist(res$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
+  hist(train_test_merged_prepared$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
        col='lightgreen')
     
   # Extracting numerical feature columns
-  res_numerical_feature_log <- numerical_feature_logical(house_prices, res)
-  res_numerical_features <- extract_numerical_features(house_prices, res_numerical_feature_log)
-  res <- res[, res_numerical_features]
+  train_test_merged_prepared_numerical_feature_log <- numerical_feature_logical(house_prices, train_test_merged_prepared)
+  train_test_merged_prepared_numerical_features <- extract_numerical_features(house_prices, train_test_merged_prepared_numerical_feature_log)
+  train_test_merged_prepared <- train_test_merged_prepared[, train_test_merged_prepared_numerical_features]
   
   # Splitting merged data set
-  x_train <- res[1:rows_in_train,]
-  x_test <- res[(rows_in_train + 1):nrow(res),]
+  x_train <- train_test_merged_prepared[1:rows_in_train,]
+  x_test <- train_test_merged_prepared[(rows_in_train + 1):nrow(train_test_merged_prepared),]
   
   # Casting all types to numeric type (also integer)
   x_train[] <- lapply(x_train, as.numeric)
