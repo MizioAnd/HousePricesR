@@ -497,7 +497,7 @@ if(interactive())
 
   # Prepare data
   train_test_merged_prepared <- prepare_data(house_prices, train_test_merged)
-  y_train <- skew_correction(house_prices, y_train)
+  y_train_prepared <- skew_correction(house_prices, y_train)
 
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
@@ -513,7 +513,15 @@ if(interactive())
        col='darkgreen')
   hist(train_test_merged_prepared$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
        col='lightgreen')
-  
+
+  # Check how distributions change after imputation
+  # Plot LotFrontage price distributions
+  par(mfrow=c(1,2))
+  hist(y_train, freq=F, main='Sale Price: Original Data', 
+       col='darkgreen')
+  hist(y_train_prepared, freq=F, main='Sale Price: skewness corrected Data', 
+       col='lightgreen')
+
   # Plot GarageYrBlt price distributions
   par(mfrow=c(1,2))
   hist(train_test_merged$GarageYrBlt, freq=F, main='GarageYrBlt: Original Data', 
@@ -535,7 +543,7 @@ if(interactive())
   x_test[] <- lapply(x_test, as.numeric)
   
   # --- xgboost ---
-  dtrain <- xgb.DMatrix(as.matrix(x_train), label=y_train)
+  dtrain <- xgb.DMatrix(as.matrix(x_train), label=y_train_prepared)
   dtest <- xgb.DMatrix(as.matrix(x_test))
   
   # Params
