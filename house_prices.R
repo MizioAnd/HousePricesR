@@ -22,7 +22,8 @@ HousePrices <- setClass(
                         numerical_feature_names = "character",
                         non_numerical_feature_names = "character",
                         feature_names_num = "character",
-                        is_one_hot_encoder = "logical"
+                        is_one_hot_encoder = "logical",
+                        is_with_log1p_SalePrice = "logical"
                         
                         ),
               
@@ -36,7 +37,8 @@ HousePrices <- setClass(
                     numerical_feature_names = c(),
                     non_numerical_feature_names = c(),
                     feature_names_num = c(),
-                    is_one_hot_encoder = F
+                    is_one_hot_encoder = F,
+                    is_with_log1p_SalePrice = F
                     
                     # Merge training and test data together
                     # df_train_test_merged = merge_train_and_test_dataframe(df, df_test)
@@ -323,16 +325,29 @@ setGeneric(name="skew_correction",
            )
 
 setMethod(f="skew_correction",
-          signature="HousePrices",
+          signature=c("HousePrices", "data.frame", "character"),
           definition=function(theObject, df, numerical_features)
           {
-            browser()
             skewed_feats <- lapply(df[complete.cases(df[numerical_features]), numerical_features], 
                                    function(x) skewness(x))  # compute skewness
             skewed_feats <- skewed_feats[skewed_feats > 0.75]
             skewed_feats = names(skewed_feats)
             df[, skewed_feats] <- log1p(df[skewed_feats])
-            
+            return(df)
+          }
+          )
+
+setMethod(f="skew_correction",
+          signature=c("HousePrices", "integer", "NULL"),
+          definition=function(theObject, df, numerical_features)
+          {
+            browser()
+            is_skewed_feat <- skewness(df) > 0.75  # compute skewness
+            if(is_skewed_feat)
+            {
+              df <- log1p(df)
+            }
+            return(df)
           }
           )
 
@@ -353,10 +368,6 @@ setMethod(f="feature_engineering",
             {
               # Correcting for skewness
               # Treat all numerical variables that were not one-hot encoded
-              if(any(names(df) %in% 'SalePrice'))
-              {
-                # self.is_with_log1p_SalePrice <- 1
-              }
               numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
               
               if(!(theObject@is_one_hot_encoder))
@@ -398,8 +409,8 @@ setMethod(f="prepare_data",
                           numerical_feature_log <- numerical_feature_logical(theObject, df)
                           theObject@non_numerical_feature_names <- extract_non_numerical_features(theObject, numerical_feature_log)
                           theObject@numerical_feature_names <- extract_numerical_features(theObject, numerical_feature_log)
-                          theObject@is_one_hot_encoder <- T
-                          
+                          # theObject@is_one_hot_encoder <- T
+                          # theObject@is_with_log1p_SalePrice <- T
                           
                           is_not_import_data <- 1
                           if(is_not_import_data)
@@ -427,7 +438,11 @@ if(interactive())
   # browser()
   
   # Create instance of class
-  house_prices <- HousePrices()
+  house_prices <- HousePrices()  # , is_with_log1p_SalePrice=T)
+  house_prices@is_one_hot_encoder <- T
+  house_prices@is_with_log1p_SalePrice <- T
+  
+  # house_prices <- new("HousePrices", is_one_hot_encoder=T)#, is_with_log1p_SalePrice=T)
   is.object(house_prices)
   isS4(house_prices)
   
@@ -437,6 +452,8 @@ if(interactive())
   df <- slot(house_prices, "df") 
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
+  # browser()
+  y_train <- skew_correction(house_prices, y_train, NULL)
   
   # Todo: testing functions
   numerical_feature_log <- numerical_feature_logical(house_prices, df)
@@ -522,7 +539,17 @@ if(interactive())
   
   save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/submission.csv'
   submission <- fread(save_path, colClasses=c("integer", "numeric"))
-  submission$SalePrice <- output_xgb_cv
+  
+  # Todo: check that the variable is written, otherwise set it in instance
+  if(house_prices@is_with_log1p_SalePrice)
+  {
+    submission$SalePrice <- expm1(output_xgb_cv)
+  }
+  else
+  {
+    submission$SalePrice <- output_xgb_cv
+  }
+  
   # submission$Id <- Id_column
   write.csv(submission, save_path, row.names=F)
   }
