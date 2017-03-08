@@ -367,7 +367,6 @@ setMethod(f="feature_engineering",
               # Correcting for skewness
               # Treat all numerical variables that were not one-hot encoded
               numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
-              browser()
               if(!(theObject@is_one_hot_encoder))
               {
                 numerical_feature_names_of_non_modified_df <- c(theObject@feature_names_num, 
@@ -375,8 +374,7 @@ setMethod(f="feature_engineering",
               }
               relevant_features <- numerical_feature_names_of_non_modified_df
               df[, relevant_features] <- skew_correction(theObject, df[, relevant_features])
-            }
-            else
+            } else
             {
                 # Only scale down sale price and leave other numerical features standardized.
                 if(any(names(df) %in% 'SalePrice'))
@@ -388,6 +386,41 @@ setMethod(f="feature_engineering",
           }
           )
 
+setGeneric(name="feature_scaling",
+           def=function(theObject, df)
+           {
+             standardGeneric("feature_scaling")
+           }
+           )
+
+setMethod(f="feature_scaling",
+          signature="HousePrices",
+          definition=function(theObject, df)
+          {
+            is_scaling_for_all_features <-  1
+            if(is_scaling_for_all_features)
+            {
+              # Correcting for skewness
+              # Treat all numerical variables that were not one-hot encoded
+              numerical_feature_names_of_non_modified_df <- theObject@numerical_feature_names
+              if(!(theObject@is_one_hot_encoder))
+              {
+                numerical_feature_names_of_non_modified_df <- c(theObject@feature_names_num, 
+                                                                numerical_feature_names_of_non_modified_df)
+              }
+              relevant_features <- numerical_feature_names_of_non_modified_df
+              df[, relevant_features] <- scale(df[, relevant_features])
+            } else
+            {
+              # Only scale down sale price and leave other numerical features standardized.
+              if(any(names(df) %in% 'SalePrice'))
+              {
+                df$SalePrice <- scale(df$SalePrice)
+              }
+            }
+            return(df)
+          }
+          )
 
 setGeneric(name="prepare_data",
                           def=function(theObject, df)
@@ -418,10 +451,9 @@ setMethod(f="prepare_data",
                             {
                               df <- drop_features_num(theObject, df)
                             }
-                            browser()
                             df <- feature_engineering(theObject, df)
                             df <- clean_data(theObject, df)
-                            # df <- feature_scaling(theObject, df)
+                            df <- feature_scaling(theObject, df)
                             # browser()
                           }
                           return(df)
@@ -438,7 +470,7 @@ if(interactive())
   
   # Create instance of class
   house_prices <- HousePrices()  # , is_with_log1p_SalePrice=T)
-  house_prices@is_one_hot_encoder <- F
+  house_prices@is_one_hot_encoder <- T
   house_prices@is_with_log1p_SalePrice <- T
   
   # house_prices <- new("HousePrices", is_one_hot_encoder=T)#, is_with_log1p_SalePrice=T)
@@ -466,7 +498,6 @@ if(interactive())
   # Prepare data
   train_test_merged_prepared <- prepare_data(house_prices, train_test_merged)
   y_train <- skew_correction(house_prices, y_train)
-  
 
   # Drop features that have certain procentage of missing values considering the training data and test, 
   # since they will undergo imputation together.
@@ -524,7 +555,7 @@ if(interactive())
     eval_metric = 'rmse'
   )
   
-  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=100, nfold=10, stratified=F, early_stopping_rounds=100)
+  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=10, stratified=F, early_stopping_rounds=100)
   
   best_nrounds <- xgb_cv$best_ntreelimit
   
@@ -534,12 +565,10 @@ if(interactive())
   save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/submission.csv'
   submission <- fread(save_path, colClasses=c("integer", "numeric"))
   
-  # Todo: check that the variable is written, otherwise set it in instance
   if(house_prices@is_with_log1p_SalePrice)
   {
     submission$SalePrice <- expm1(output_xgb_cv)
-  }
-  else
+  } else
   {
     submission$SalePrice <- output_xgb_cv
   }
