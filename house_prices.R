@@ -477,8 +477,6 @@ if(interactive())
   is.object(house_prices)
   isS4(house_prices)
   
-  
-  
   # Create object to load data
   df <- slot(house_prices, "df") 
   df_test <- slot(house_prices, "df_test")
@@ -555,7 +553,7 @@ if(interactive())
     learning_rate = 0.01,
     # eta = 0.02, 
     objective = 'reg:linear',
-    max_depth = 1,
+    max_depth = 2,
     num_parallel_tree = 1,
     # alpha = 1,
     # gamma = 2,
@@ -563,15 +561,49 @@ if(interactive())
     eval_metric = 'rmse'
   )
   
-  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=10, stratified=F, early_stopping_rounds=100)
+  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=100, nfold=10, stratified=F, early_stopping_rounds=100, verbose=2)
   
   best_nrounds <- xgb_cv$best_ntreelimit
   
-  gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
-  output_xgb_cv <- predict(gbdt, dtest)
+  # Measure learning progress while building the model
+  dtrain_bench = dtrain[1:as.integer(dim(dtrain)[1]/2)]
+  dtest_bench = dtrain[(as.integer(dim(dtrain)[1]/2) + 1):dim(dtrain)[1]]
+  watchlist <- list(train=dtrain_bench, test=dtest_bench)
   
-  save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/submission.csv'
+  # gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
+  gbdt <- xgb.train(xgb_params, dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
+  output_xgb_cv <- predict(gbdt, dtest)
+
+  # Information from xgb.DMatrix
+  label = getinfo(dtrain, "label")
+  # Only makes sense for binary classification where output is {0, 1}
+  # err <- as.numeric(sum(as.integer(output_xgb_cv > 0.5) != label))/length(label)
+  # print(paste("test-error=", err))
+  
+  
+  
+  # Feature importance
+  importance_matrix <- xgb.importance(model=gbdt)
+  print(importance_matrix)
+  xgb.plot.importance(importance_matrix=importance_matrix)
+  
+  # Trees from model
+  xgb.plot.tree(model=gbdt)
+  
+  save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/'
+  name <- 'submission.csv'
   submission <- fread(save_path, colClasses=c("integer", "numeric"))
+
+  # save model to binary local file
+  xgb.save(gbdt, paste0(save_path, "xgboost.model", collapse=''))
+  
+  # Test to see how identical our saved model is to the original by comparison of two predictions
+  # load binary model to R
+  bst2 <- xgb.load(paste0(save_path, "model_to_compare_xgboost.model", collapse=''))
+  pred2 <- predict(bst2, dtest)
+  
+  # And now the test
+  print(paste("sum(abs(pred2 - pred))=", sum(abs(pred2 - output_xgb_cv))))
   
   if(house_prices@is_with_log1p_SalePrice)
   {
@@ -582,5 +614,5 @@ if(interactive())
   }
   
   # submission$Id <- Id_column
-  write.csv(submission, save_path, row.names=F)
+  write.csv(submission, paste0(save_path, name, collapse=''), row.names=F)
   }
