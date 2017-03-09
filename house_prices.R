@@ -9,6 +9,7 @@ library('ggthemes')
 library('scales')
 library(bit64)  # may be needed for fread() for bit64::integer64 type properly displayed
 library(moments)  # imports skewness
+library(caret)
 
 HousePrices <- setClass(
               # Set name of class
@@ -472,7 +473,7 @@ if(interactive())
   house_prices <- HousePrices()  # , is_with_log1p_SalePrice=T)
   house_prices@is_one_hot_encoder <- T
   house_prices@is_with_log1p_SalePrice <- T
-  
+
   # house_prices <- new("HousePrices", is_one_hot_encoder=T)#, is_with_log1p_SalePrice=T)
   is.object(house_prices)
   isS4(house_prices)
@@ -566,12 +567,19 @@ if(interactive())
   best_nrounds <- xgb_cv$best_ntreelimit
   
   # Measure learning progress while building the model
-  dtrain_bench = dtrain[1:as.integer(dim(dtrain)[1]/2)]
-  dtest_bench = dtrain[(as.integer(dim(dtrain)[1]/2) + 1):dim(dtrain)[1]]
+  set.seed(3410)
+  train_partition_index <- createDataPartition(y_train_prepared, p=0.8, list=F, times=1)
+  # dtrain_bench = dtrain[1:as.integer(dim(dtrain)[1]*0.8)]
+  # dtest_bench = dtrain[(as.integer(dim(dtrain)[1]*0.8) + 1):dim(dtrain)[1]]
+  dtrain_bench = dtrain[train_partition_index,]
+  test_partition_index <- vector("logical", length=length(y_train_prepared))
+  test_partition_index[train_partition_index] <- T
+  test_partition_index <- which(!test_partition_index)
+  dtest_bench = dtrain[test_partition_index,]
   watchlist <- list(train=dtrain_bench, test=dtest_bench)
   
   # gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
-  gbdt <- xgb.train(xgb_params, dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
+  gbdt <- xgb.train(xgb_params, booster = "gblinear", dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
   output_xgb_cv <- predict(gbdt, dtest)
 
   # Information from xgb.DMatrix
@@ -579,8 +587,6 @@ if(interactive())
   # Only makes sense for binary classification where output is {0, 1}
   # err <- as.numeric(sum(as.integer(output_xgb_cv > 0.5) != label))/length(label)
   # print(paste("test-error=", err))
-  
-  
   
   # Feature importance
   importance_matrix <- xgb.importance(model=gbdt)
