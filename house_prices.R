@@ -551,18 +551,19 @@ if(interactive())
     colsample_bytree = 0.8,
     silent = 1,
     subsample = 0.6,
-    learning_rate = 0.01,
-    # eta = 0.02, 
-    objective = 'reg:linear',
+    # learning_rate = 0.01,
+    eta = 0.02,
+    # objective = 'reg:linear',
     max_depth = 2,
     num_parallel_tree = 1,
     # alpha = 1,
     # gamma = 2,
     min_child_weight = 1,
     eval_metric = 'rmse'
+    # booster = 'gblinear'
   )
   
-  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=100, nfold=10, stratified=F, early_stopping_rounds=100, verbose=2)
+  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=10, stratified=F, early_stopping_rounds=25, verbose=2)
   
   best_nrounds <- xgb_cv$best_ntreelimit
   
@@ -578,8 +579,8 @@ if(interactive())
   dtest_bench = dtrain[test_partition_index,]
   watchlist <- list(train=dtrain_bench, test=dtest_bench)
   
-  # gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
-  gbdt <- xgb.train(xgb_params, booster = "gblinear", dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
+  gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
+  # gbdt <- xgb.train(xgb_params, dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
   output_xgb_cv <- predict(gbdt, dtest)
 
   # Information from xgb.DMatrix
@@ -594,22 +595,22 @@ if(interactive())
   xgb.plot.importance(importance_matrix=importance_matrix)
   
   # Trees from model
-  xgb.plot.tree(model=gbdt)
+  # xgb.plot.tree(model=gbdt)
   
   save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/'
   name <- 'submission.csv'
-  submission <- fread(save_path, colClasses=c("integer", "numeric"))
+  submission <- fread(paste0(save_path, name, collapse=''), colClasses=c("integer", "numeric"))
 
   # save model to binary local file
-  xgb.save(gbdt, paste0(save_path, "xgboost.model", collapse=''))
+  # xgb.save(gbdt, paste0(save_path, "xgboost.model", collapse=''))
   
   # Test to see how identical our saved model is to the original by comparison of two predictions
   # load binary model to R
-  bst2 <- xgb.load(paste0(save_path, "model_to_compare_xgboost.model", collapse=''))
-  pred2 <- predict(bst2, dtest)
+  # bst2 <- xgb.load(paste0(save_path, "model_to_compare_xgboost.model", collapse=''))
+  # pred2 <- predict(bst2, dtest)
   
   # And now the test
-  print(paste("sum(abs(pred2 - pred))=", sum(abs(pred2 - output_xgb_cv))))
+  # print(paste("sum(abs(pred2 - pred))=", sum(abs(pred2 - output_xgb_cv))))
   
   if(house_prices@is_with_log1p_SalePrice)
   {
