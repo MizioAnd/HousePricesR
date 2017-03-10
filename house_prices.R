@@ -10,6 +10,8 @@ library('scales')
 library(bit64)  # may be needed for fread() for bit64::integer64 type properly displayed
 library(moments)  # imports skewness
 library(caret)
+library(gridExtra)
+library(cowplot)
 
 HousePrices <- setClass(
               # Set name of class
@@ -107,10 +109,22 @@ setMethod(f="clean_data",
                       signature="HousePrices",
                       definition=function(theObject, df)
                       {
-                                  # Imputation with MICE
-                                  set.seed(0)
-                                  df <- as.data.frame(df)
-                                  df_imputed <- complete(mice(df))  # method='rf'))
+                                  if(sum(is.na(df)) > 0)
+                                  {
+                                    is_with_MICE = 0
+                                    if(is_with_MICE)
+                                    {
+                                      # Imputation with MICE
+                                      set.seed(0)
+                                      df <- as.data.frame(df)
+                                      df_imputed <- complete(mice(df))  # method='rf'))
+                                    } else
+                                    {
+                                      # Remove all rows with NA values
+                                      df_imputed <- df[complete.cases(df),]
+                                    }
+                                    
+                                  }
                                   return(df_imputed)
                       }
                       )
@@ -434,8 +448,8 @@ setMethod(f="plot_histogram",
           signature="HousePrices",
           definition=function(theObject, df, feature_col_index)
           {
-            return(ggplot(data=df[[feature_col_index]], aes(x=factor(x))) + stat_count() + xlab(colnames(df[[feature_col_index]])) 
-                   + theme_light() + theme(axis.text.x=element_text(angle=90, hjust=1)))
+            return(ggplot(data=df[feature_col_index], aes(x=factor(df[[feature_col_index]]))) + 
+                     stat_count() + xlab(colnames(df[feature_col_index])) + theme_light() + theme(axis.text.x=element_text(angle=90, hjust=1)))
           }
           )
 
@@ -471,7 +485,11 @@ setMethod(f="plot_density",
           signature="HousePrices",
           definition=function(theObject, df, feature_col_index, target_column_name)
           {
-            df_to_plot <- data.frame(x=df[[feature_col_index]], SalePrice=df[, target_column_name])
+            # Todo: check if commented version has error
+            # df_to_plot <- data.frame(x=df[[feature_col_index]], SalePrice=df[, target_column_name])
+            # feature_plot <- ggplot(data=df_to_plot) + geom_line(aes(x=df[[feature_col_index]]), stat='Sale price density', size=1, alpha=1.0) +
+            #   xlab(paste0((colnames(df[[feature_col_index]])), '\n', 'Skewness: ', round(skewness(df[[feature_col_index]], na.rm=T), 2))) +
+            #   theme_light()
             feature_plot <- ggplot(data=df_to_plot) + geom_line(aes(x=x), stat='Sale price density', size=1, alpha=1.0) +
               xlab(paste0((colnames(df[[feature_col_index]])), '\n', 'Skewness: ', round(skewness(df[[feature_col_index]], na.rm=T), 2))) +
               theme_light()
@@ -612,6 +630,9 @@ if(interactive())
     if(is_categorical_feature_plots)
     {
       # Todo: implement categorical feature plots
+      
+      #Bar plots
+      plot_function(house_prices, df, plot_histogram, 2, 2)
     }
     
   }
