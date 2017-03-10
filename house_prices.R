@@ -423,6 +423,62 @@ setMethod(f="feature_scaling",
           }
           )
 
+setGeneric(name="plot_histogram",
+           def=function(theObject, df, feature_col_index)
+           {
+             standardGeneric("plot_histogram")
+           }
+           )
+
+setMethod(f="plot_histogram",
+          signature="HousePrices",
+          definition=function(theObject, df, feature_col_index)
+          {
+            return(ggplot(data=df[[feature_col_index]], aes(x=factor(x))) + stat_count() + xlab(colnames(df[[feature_col_index]])) 
+                   + theme_light() + theme(axis.text.x=element_text(angle=90, hjust=1)))
+          }
+          )
+
+setGeneric(name="plot_function",
+           def=function(theObject, df, function_to_plot, feature_column_indices, ncol=2)
+           {
+             standardGeneric("plot_function")
+           }
+           )
+
+setMethod(f="plot_function",
+          signature="HousePrices",
+          definition=function(theObject, df, function_to_plot, feature_column_indices, ncol=2)
+          {
+            feature_plots <- list()
+            for(ite in feature_column_indices)
+            {
+              feature_plot <- function_to_plot(theObject, df=df, feature_col_index=ite)
+              feature_plots <- c(feature_plots, list(feature_plot))
+            }
+            do.call("grid.arrange", c(feature_plots, ncol=ncol))
+          }
+          )
+
+setGeneric(name="plot_density",
+           def=function(theObject, df, feature_col_index, target_column_name)
+           {
+             standardGeneric("plot_density")
+           }
+           )
+
+setMethod(f="plot_density",
+          signature="HousePrices",
+          definition=function(theObject, df, feature_col_index, target_column_name)
+          {
+            df_to_plot <- data.frame(x=df[[feature_col_index]], SalePrice=df[, target_column_name])
+            feature_plot <- ggplot(data=df_to_plot) + geom_line(aes(x=x), stat='Sale price density', size=1, alpha=1.0) +
+              xlab(paste0((colnames(df[[feature_col_index]])), '\n', 'Skewness: ', round(skewness(df[[feature_col_index]], na.rm=T), 2))) +
+              theme_light()
+            return(feature_plot)
+          }
+          )
+
 setGeneric(name="prepare_data",
                           def=function(theObject, df)
                           {
@@ -467,11 +523,10 @@ setMethod(f="prepare_data",
 if(interactive())
   {
   options(error=recover, show.error.locations=TRUE, warn=2)
-  # browser()
   
   # Create instance of class
   house_prices <- HousePrices()  # , is_with_log1p_SalePrice=T)
-  house_prices@is_one_hot_encoder <- T
+  house_prices@is_one_hot_encoder <- F
   house_prices@is_with_log1p_SalePrice <- T
 
   # house_prices <- new("HousePrices", is_one_hot_encoder=T)#, is_with_log1p_SalePrice=T)
@@ -483,51 +538,15 @@ if(interactive())
   df_test <- slot(house_prices, "df_test")
   y_train <- df$SalePrice
   
-  # Todo: testing functions
-  # numerical_feature_log <- numerical_feature_logical(house_prices, df)
-  # df_num <- extract_numerical_features(house_prices, numerical_feature_log)
-  
+  ## Prepare data
   # Merge training and test data together
   train_test_merged <- merge_train_and_test_dataframe(house_prices, df, df_test)
-
   # Number of rows in training data for later splitting
   rows_in_train <- nrow(df)
   features_in_train <- names(df)
-
-  # Prepare data
   train_test_merged_prepared <- prepare_data(house_prices, train_test_merged)
   y_train_prepared <- skew_correction(house_prices, y_train)
-
-  # Drop features that have certain procentage of missing values considering the training data and test, 
-  # since they will undergo imputation together.
-  print(colSums(is.na(train_test_merged)))
-
-  # Check df after imputation with MICE
-  print(colSums(is.na(train_test_merged_prepared)))
   
-  # Check how distributions change after imputation
-  # Plot LotFrontage price distributions
-  par(mfrow=c(1,2))
-  hist(train_test_merged$LotFrontage, freq=F, main='LotFrontage: Original Data', 
-       col='darkgreen')
-  hist(train_test_merged_prepared$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
-       col='lightgreen')
-
-  # Check how distributions change after imputation
-  # Plot LotFrontage price distributions
-  par(mfrow=c(1,2))
-  hist(y_train, freq=F, main='Sale Price: Original Data', 
-       col='darkgreen')
-  hist(y_train_prepared, freq=F, main='Sale Price: skewness corrected Data', 
-       col='lightgreen')
-
-  # Plot GarageYrBlt price distributions
-  par(mfrow=c(1,2))
-  hist(train_test_merged$GarageYrBlt, freq=F, main='GarageYrBlt: Original Data', 
-       col='darkgreen')
-  hist(train_test_merged_prepared$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
-       col='lightgreen')
-    
   # Extracting numerical feature columns
   train_test_merged_prepared_numerical_feature_log <- numerical_feature_logical(house_prices, train_test_merged_prepared)
   train_test_merged_prepared_numerical_features <- extract_numerical_features(house_prices, train_test_merged_prepared_numerical_feature_log)
@@ -541,85 +560,210 @@ if(interactive())
   x_train[] <- lapply(x_train, as.numeric)
   x_test[] <- lapply(x_test, as.numeric)
   
-  # --- xgboost ---
-  dtrain <- xgb.DMatrix(as.matrix(x_train), label=y_train_prepared)
-  dtest <- xgb.DMatrix(as.matrix(x_test))
-  
-  # Params
-  xgb_params <- list(
-    seed = 0,
-    colsample_bytree = 0.8,
-    silent = 1,
-    subsample = 0.6,
-    # learning_rate = 0.01,
-    eta = 0.02,
-    # objective = 'reg:linear',
-    max_depth = 2,
-    num_parallel_tree = 1,
-    # alpha = 1,
-    # gamma = 2,
-    min_child_weight = 1,
-    eval_metric = 'rmse'
-    # booster = 'gblinear'
-  )
-  
-  xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=10, stratified=F, early_stopping_rounds=25, verbose=2)
-  
-  best_nrounds <- xgb_cv$best_ntreelimit
-  
-  # Measure learning progress while building the model
-  set.seed(3410)
-  train_partition_index <- createDataPartition(y_train_prepared, p=0.8, list=F, times=1)
-  # dtrain_bench = dtrain[1:as.integer(dim(dtrain)[1]*0.8)]
-  # dtest_bench = dtrain[(as.integer(dim(dtrain)[1]*0.8) + 1):dim(dtrain)[1]]
-  dtrain_bench = dtrain[train_partition_index,]
-  test_partition_index <- vector("logical", length=length(y_train_prepared))
-  test_partition_index[train_partition_index] <- T
-  test_partition_index <- which(!test_partition_index)
-  dtest_bench = dtrain[test_partition_index,]
-  watchlist <- list(train=dtrain_bench, test=dtest_bench)
-  
-  gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
-  # gbdt <- xgb.train(xgb_params, dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
-  output_xgb_cv <- predict(gbdt, dtest)
-
-  # Information from xgb.DMatrix
-  label = getinfo(dtrain, "label")
-  # Only makes sense for binary classification where output is {0, 1}
-  # err <- as.numeric(sum(as.integer(output_xgb_cv > 0.5) != label))/length(label)
-  # print(paste("test-error=", err))
-  
-  # Feature importance
-  importance_matrix <- xgb.importance(model=gbdt)
-  print(importance_matrix)
-  xgb.plot.importance(importance_matrix=importance_matrix)
-  
-  # Trees from model
-  # xgb.plot.tree(model=gbdt)
-  
-  save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/'
-  name <- 'submission.csv'
-  submission <- fread(paste0(save_path, name, collapse=''), colClasses=c("integer", "numeric"))
-
-  # save model to binary local file
-  # xgb.save(gbdt, paste0(save_path, "xgboost.model", collapse=''))
-  
-  # Test to see how identical our saved model is to the original by comparison of two predictions
-  # load binary model to R
-  # bst2 <- xgb.load(paste0(save_path, "model_to_compare_xgboost.model", collapse=''))
-  # pred2 <- predict(bst2, dtest)
-  
-  # And now the test
-  # print(paste("sum(abs(pred2 - pred))=", sum(abs(pred2 - output_xgb_cv))))
-  
-  if(house_prices@is_with_log1p_SalePrice)
+  is_explore_data <- T
+  if(is_explore_data)
   {
-    submission$SalePrice <- expm1(output_xgb_cv)
-  } else
-  {
-    submission$SalePrice <- output_xgb_cv
+    # Information of df before preperation
+    print(colSums(is.na(train_test_merged)))
+    print(summary(train_test_merged))
+    
+    # Check df after preparation
+    print('After preperation =================')
+    print(colSums(is.na(train_test_merged_prepared)))
+    print(summary(train_test_merged_prepared))
+    
+    # Todo: check if print is needed
+    print(cat('Train has', dim(df)[1], 'rows and', dim(df)[2], 'columns.'))
+    print(cat('Test has', dim(df_test)[1], 'rows and', dim(df_test)[2], ' columns.'))
+    
+    # The percentage of data missing in train.
+    sum(is.na(df)) / (nrow(df) *ncol(df))
+    
+    # The percentage of data missing in test.
+    sum(is.na(df_test)) / (nrow(df_test) * ncol(df_test))
+    
+    # Check if any duplicate rows
+    cat("The number of row duplicates:", nrow(df) - nrow(unique(df)))
+    
+    # Check how distributions change after imputation
+    # Plot LotFrontage price distributions
+    par(mfrow=c(1,2))
+    hist(train_test_merged$LotFrontage, freq=F, main='LotFrontage: Original Data', 
+         col='darkgreen')
+    hist(train_test_merged_prepared$LotFrontage, freq=F, main='LotFrontage: Mice Imputed Data', 
+         col='lightgreen')
+    
+    # Check how distributions change after imputation
+    # Plot LotFrontage price distributions
+    par(mfrow=c(1,2))
+    hist(y_train, freq=F, main='Sale Price: Original Data', 
+         col='darkgreen')
+    hist(y_train_prepared, freq=F, main='Sale Price: skewness corrected Data', 
+         col='lightgreen')
+    
+    # Plot GarageYrBlt price distributions
+    par(mfrow=c(1,2))
+    hist(train_test_merged$GarageYrBlt, freq=F, main='GarageYrBlt: Original Data', 
+         col='darkgreen')
+    hist(train_test_merged_prepared$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
+         col='lightgreen')
+    
+    is_categorical_feature_plots <- T
+    if(is_categorical_feature_plots)
+    {
+      # Todo: implement categorical feature plots
+    }
+    
   }
   
-  # submission$Id <- Id_column
-  write.csv(submission, paste0(save_path, name, collapse=''), row.names=F)
+  
+  is_test_functions <- F
+  if(is_test_functions)
+  {
+    # Testing functions
+    # numerical_feature_log <- numerical_feature_logical(house_prices, df)
+    # df_num <- extract_numerical_features(house_prices, numerical_feature_log)
+  }
+  
+  is_make_prediction <- F
+  if(is_make_prediction)
+  {
+    
+    is_xgb_cv <- T
+    if(is_xgb_cv)
+    {
+      # --- xgboost ---
+      save_path <- '/home/mizio/Documents/Kaggle/HousePrices/submission/'
+      dtrain <- xgb.DMatrix(as.matrix(x_train), label=y_train_prepared)
+      dtest <- xgb.DMatrix(as.matrix(x_test))
+      
+      # Saving xgb.DMatrix
+      xgb.DMatrix.save(dtrain, paste0(save_path, "dtrain.buffer", collapse=''))
+      xgb.DMatrix.save(dtest, paste0(save_path, "dtest.buffer", collapse=''))
+      # Loading xgb.DMatrix
+      # dtrain2 <- xgb.DMatrix(paste0(save_path, "dtrain.buffer", collapse=''))
+      # dtest2 <-  xgb.DMatrix(paste0(save_path, "dtest.buffer", collapse=''))
+      
+      # Params aggressive and prone to overfitting
+      # xgb_params <- list(
+      #   seed = 0,
+      #   colsample_bytree = 0.8,
+      #   silent = 1,
+      #   subsample = 0.6,
+      #   # learning_rate = 0.01,
+      #   eta = 0.06,  # low value means it is more robust to overfitting
+      #   # objective = 'reg:linear',
+      #   max_depth = 15,
+      #   num_parallel_tree = 1,
+      #   # alpha = 1,
+      #   gamma = 0,
+      #   min_child_weight = 0.1,
+      #   eval_metric = 'rmse',
+      #   booster = 'gbtree'
+      #   # booster = 'gblinear'
+      # )
+      
+      # Params conservative
+      xgb_params <- list(
+        seed = 0,
+        colsample_bytree = 0.8,
+        silent = 1,
+        subsample = 0.6,
+        # learning_rate = 0.01,
+        eta = 0.02,  # low value means it is more robust to overfitting
+        # objective = 'reg:linear',
+        max_depth = 10,
+        num_parallel_tree = 100,
+        # alpha = 1,
+        gamma = 0,
+        min_child_weight = 1,
+        eval_metric = 'rmse',
+        booster = 'gbtree'
+        # booster = 'gblinear'
+      )
+      
+      xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=5, stratified=F, early_stopping_rounds=100, verbose=2)
+      
+      best_nrounds <- xgb_cv$best_ntreelimit
+      
+      # Measure learning progress while building the model
+      set.seed(3410)
+      train_partition_index <- createDataPartition(y_train_prepared, p=0.8, list=F, times=1)
+      # dtrain_bench = dtrain[1:as.integer(dim(dtrain)[1]*0.8)]
+      # dtest_bench = dtrain[(as.integer(dim(dtrain)[1]*0.8) + 1):dim(dtrain)[1]]
+      dtrain_bench = dtrain[train_partition_index,]
+      test_partition_index <- vector("logical", length=length(y_train_prepared))
+      test_partition_index[train_partition_index] <- T
+      test_partition_index <- which(!test_partition_index)
+      dtest_bench = dtrain[test_partition_index,]
+      watchlist <- list(train=dtrain_bench, test=dtest_bench)
+      
+      gbdt <- xgb.train(xgb_params, dtrain, nrounds=as.integer(best_nrounds))
+      # gbdt <- xgb.train(xgb_params, dtrain_bench, watchlist=watchlist, nrounds=as.integer(best_nrounds))
+      output_xgb_cv <- predict(gbdt, dtest)
+      output <- output_xgb_cv
+      
+      # Information from xgb.DMatrix
+      label = getinfo(dtrain, "label")
+      # Only makes sense for binary classification where output is {0, 1}
+      # err <- as.numeric(sum(as.integer(output_xgb_cv > 0.5) != label))/length(label)
+      # print(paste("test-error=", err))
+      
+      # Feature importance
+      importance_matrix <- xgb.importance(feature_names=colnames(x_train), model=gbdt)
+      head(importance_matrix)
+      # print(importance_matrix)
+      xgb.plot.importance(importance_matrix=importance_matrix)
+      # Deeper analysis of features
+      # How to do it for a regression problem
+      # importance_raw <- xgb.importance(feature_names=colnames(x_train), model=gbdt, data=x_train, label=y_train_prepared)
+      # importance_clean <- importance_raw[,`:=`(Cover=NULL, Frequency=NULL)]
+      
+      # Checking Chi^2 between features. Higher means more correlated
+      # chi2 <- chisq.test(x_train$OverallQual, y_train_prepared)
+      # print(chi2)
+      # chi2 <- chisq.test(x_train$GrLivArea)
+      # print(chi2)
+      
+      # Trees from model
+      # xgb.plot.tree(model=gbdt)
+    }
+    
+    # Todo: implement Regularized linear models (lasso, ridge)
+    
+  }
+  
+  is_make_submission <- F
+  if(is_make_submission && is_make_prediction)
+  {
+    name <- 'submission.csv'
+    submission <- fread(paste0(save_path, name, collapse=''), colClasses=c("integer", "numeric"))
+    
+    if(is_make_prediction && is_xgb_cv)
+    {
+      # save model to binary local file
+      xgb.save(gbdt, paste0(save_path, "xgboost.model", collapse=''))
+      
+      # Test to see how identical our saved model is to the original by comparison of two predictions
+      # load binary model to R
+      # bst2 <- xgb.load(paste0(save_path, "model_to_compare_xgboost.model", collapse=''))
+      # pred2 <- predict(bst2, dtest)
+      
+      # And now the test
+      # print(paste("sum(abs(pred2 - pred))=", sum(abs(pred2 - output_xgb_cv))))
+    }
+    
+    if(house_prices@is_with_log1p_SalePrice)
+    {
+      submission$SalePrice <- expm1(output)
+    } else
+    {
+      submission$SalePrice <- output
+    }
+    
+    # submission$Id <- Id_column
+    write.csv(submission, paste0(save_path, name, collapse=''), row.names=F)
+    
+  }
+
   }
