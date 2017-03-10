@@ -111,7 +111,7 @@ setMethod(f="clean_data",
                       {
                                   if(sum(is.na(df)) > 0)
                                   {
-                                    is_with_MICE = 0
+                                    is_with_MICE <- F
                                     if(is_with_MICE)
                                     {
                                       # Imputation with MICE
@@ -568,8 +568,11 @@ if(interactive())
   # Extracting numerical feature columns
   train_test_merged_prepared_numerical_feature_log <- numerical_feature_logical(house_prices, train_test_merged_prepared)
   train_test_merged_prepared_numerical_features <- extract_numerical_features(house_prices, train_test_merged_prepared_numerical_feature_log)
+  # Extracting non numerical feature columns
+  train_test_merged_prepared_non_numerical_features <- extract_non_numerical_features(house_prices, train_test_merged_prepared_numerical_feature_log)
+  train_test_merged_prepared_only_categorical <- train_test_merged_prepared[, train_test_merged_prepared_non_numerical_features]
   train_test_merged_prepared <- train_test_merged_prepared[, train_test_merged_prepared_numerical_features]
-  
+
   # Splitting merged data set
   x_train <- train_test_merged_prepared[1:rows_in_train,]
   x_test <- train_test_merged_prepared[(rows_in_train + 1):nrow(train_test_merged_prepared),]
@@ -632,7 +635,12 @@ if(interactive())
       # Todo: implement categorical feature plots
       
       #Bar plots
-      plot_function(house_prices, df, plot_histogram, 2, 2)
+      # Categorical features are in total 38
+      plot_function(house_prices, df[, train_test_merged_prepared_non_numerical_features], plot_histogram, 1:4, 2)
+      plot_function(house_prices, df[, train_test_merged_prepared_non_numerical_features], plot_histogram, 5:8, 2)
+      plot_function(house_prices, df[, train_test_merged_prepared_non_numerical_features], plot_histogram, 9:13, 2)
+      plot_function(house_prices, df[, train_test_merged_prepared_non_numerical_features], plot_histogram, 14:17, 2)
+      plot_function(house_prices, df[, train_test_merged_prepared_non_numerical_features], plot_histogram, 18:21, 2)
     }
     
   }
