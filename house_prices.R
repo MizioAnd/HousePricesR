@@ -12,6 +12,10 @@ library(moments)  # imports skewness
 library(caret)
 library(gridExtra)
 library(cowplot)
+library(lattice)
+# library(Hmisc)  # not working
+# library(Formula)
+# library(VIM)
 
 HousePrices <- setClass(
               # Set name of class
@@ -585,7 +589,8 @@ if(interactive())
   if(is_explore_data)
   {
     # Information of df before preperation
-    print(colSums(is.na(train_test_merged)))
+    print(sort(sapply(train_test_merged, function(x) sum(is.na(x))), decreasing = TRUE))
+    # print(colSums(is.na(train_test_merged)))
     print(summary(train_test_merged))
     
     # Check df after preparation
@@ -593,7 +598,6 @@ if(interactive())
     print(colSums(is.na(train_test_merged_prepared)))
     print(summary(train_test_merged_prepared))
     
-    # Todo: check if print is needed
     print(cat('Train has', dim(df)[1], 'rows and', dim(df)[2], 'columns.'))
     print(cat('Test has', dim(df_test)[1], 'rows and', dim(df_test)[2], ' columns.'))
     
@@ -628,6 +632,16 @@ if(interactive())
          col='darkgreen')
     hist(train_test_merged_prepared$GarageYrBlt, freq=F, main='GarageYrBlt: Mice Imputed Data', 
          col='lightgreen')
+    
+    is_clustering <- 0
+    if(is_clustering)
+    {
+      hel =1
+      # train_test_merged_prepared_clustered <- varclus(x_train, similarity="spearman", minlev=0.05)
+      # train_test_merged_prepared_clustered <- varclus(as.matrix(train_test_merged_prepared), similarity="spearman", minlev=0.05)
+      # plot(train_test_merged_prepared_clustered, cex=0.5)
+    }
+    
     
     is_categorical_feature_plots <- T
     if(is_categorical_feature_plots)
@@ -701,7 +715,7 @@ if(interactive())
         # learning_rate = 0.01,
         eta = 0.02,  # low value means it is more robust to overfitting
         # objective = 'reg:linear',
-        max_depth = 10,
+        max_depth = 15,
         num_parallel_tree = 100,
         # alpha = 1,
         gamma = 0,
@@ -709,6 +723,7 @@ if(interactive())
         eval_metric = 'rmse',
         booster = 'gbtree'
         # booster = 'gblinear'
+        # verbose_eval=10
       )
       
       xgb_cv <- xgb.cv(xgb_params, dtrain, nrounds=1000, nfold=5, stratified=F, early_stopping_rounds=100, verbose=2)
