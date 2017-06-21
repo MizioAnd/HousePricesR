@@ -668,7 +668,7 @@ if(interactive())
     # df_num <- extract_numerical_features(house_prices, numerical_feature_log)
   }
   
-  is_make_prediction <- F
+  is_make_prediction <- T
   if(is_make_prediction)
   {
     
